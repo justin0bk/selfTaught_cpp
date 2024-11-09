@@ -1,4 +1,4 @@
-#include "Vec2.h"
+#include "../src/Vec2.h"
 #include <iostream>
 
 int main()

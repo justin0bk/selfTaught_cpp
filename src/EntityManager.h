@@ -16,6 +16,7 @@ class EntityManager
     EntityMap   m_entityMap;
     size_t      m_totalEntities = 0;
 
+    std::shared_ptr<Entity> createEntity(const size_t id, const std::string& tag);
     void removeDeadEntities(EntityVec & vec);
 
 public:
