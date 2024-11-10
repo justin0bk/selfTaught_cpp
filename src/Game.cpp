@@ -3,33 +3,111 @@
 
 #include <iostream>
 #include <fstream>
+#include <string>
 
 Game::Game(const std::string & config)
 {
     init(config);
 }
 
+void Game::readConfig(std::string & head, std::ifstream & fin)
+{
+    if (head == "Window")
+    {
+        // Window configurations
+        int wWidth, wHeight, wFramelimit, wScreenMode;
+
+        fin >> wWidth >> wHeight >> wFramelimit >> wScreenMode;
+
+        // set up default window parameters
+        if (wScreenMode == 1) // Assuming 1 represents full screen mode
+        {
+            m_window.create(sf::VideoMode(wWidth, wHeight), 
+                                  "Game Window", 
+                                  sf::Style::Fullscreen);
+        }
+        else // Windowed mode
+        {
+            m_window.create(sf::VideoMode(wWidth, wHeight), 
+                                  "Game Window", 
+                                  sf::Style::Default);
+        }
+        m_window.setFramerateLimit(wFramelimit);
+    } else if (head == "Font")
+    {
+        // Font configurations
+        std::string fPath;
+        int size, fR, fG, fB;
+
+        fin >> fPath >> size >> fR >> fG >> fB;
+
+        m_font.loadFromFile(fPath);
+        m_text.setFont(m_font);
+        m_text.setCharacterSize(size);
+        m_text.setFillColor(sf::Color(fR, fG, fB));
+
+    } else if (head == "Player")
+    {
+        fin >> m_playerConfig.SR 
+            >> m_playerConfig.CR
+            >> m_playerConfig.S 
+            >> m_playerConfig.FR 
+            >> m_playerConfig.FG 
+            >> m_playerConfig.FB 
+            >> m_playerConfig.OR 
+            >> m_playerConfig.OG 
+            >> m_playerConfig.OB 
+            >> m_playerConfig.OT 
+            >> m_playerConfig.V;
+    } else if (head == "Enemy")
+    {
+        fin >> m_enemyConfig.SR 
+            >> m_enemyConfig.CR 
+            >> m_enemyConfig.OR 
+            >> m_enemyConfig.OG 
+            >> m_enemyConfig.OB 
+            >> m_enemyConfig.OT 
+            >> m_enemyConfig.VMIN 
+            >> m_enemyConfig.VMAX 
+            >> m_enemyConfig.L 
+            >> m_enemyConfig.SI 
+            >> m_enemyConfig.SMIN 
+            >> m_enemyConfig.SMAX;
+    } else if (head == "Bullet")
+    {
+        fin >> m_bulletConfig.SR 
+            >> m_bulletConfig.CR 
+            >> m_bulletConfig.FR 
+            >> m_bulletConfig.FG 
+            >> m_bulletConfig.FB 
+            >> m_bulletConfig.OR 
+            >> m_bulletConfig.OG 
+            >> m_bulletConfig.OB 
+            >> m_bulletConfig.OT 
+            >> m_bulletConfig.V 
+            >> m_bulletConfig.L 
+            >> m_bulletConfig.S;
+    }
+}
+
 void Game::init(const std::string & path)
 {
-    // TODO: read in config file here
-    //       use the premade PlayerConfig, EnemyConfig, BulletConfig variables
+    // Read and initialize with configuration values
     std::ifstream fin(path);
 
-    fin >> m_playerConfig.SR 
-        >> m_playerConfig.CR 
-        >> m_playerConfig.FR 
-        >> m_playerConfig.FG 
-        >> m_playerConfig.FB 
-        >> m_playerConfig.OR 
-        >> m_playerConfig.OG 
-        >> m_playerConfig.OB 
-        >> m_playerConfig.OT 
-        >> m_playerConfig.V 
-        >> m_playerConfig.S;
+    if (!fin)
+    {
+        std::cout << "no config file \n";
+        return;
+    }
+    
+    std::string tempHead;
 
-    // set up default window parameters
-    m_window.create(sf::VideoMode(1280, 720), "Assignment 2");
-    m_window.setFramerateLimit(60);
+    while (fin >> tempHead)
+    {
+        readConfig(tempHead, fin);
+        std::cout << "initialized " << tempHead << std::endl;
+    }
 
     spawnPlayer();
 }
@@ -42,11 +120,11 @@ void Game::run()
     
     while (m_running)
     {
-        m_entities.update();
+        // m_entities.update();
 
-        sEnemySpawner();
-        sMovement();
-        sCollision();
+        // sEnemySpawner();
+        // sMovement();
+        // sCollision();
         sUserInput();
         sRender();
 
@@ -63,17 +141,21 @@ void Game::setPaused(bool paused)
 
 void Game::spawnPlayer()
 {
-    // TODO: Finish adding all properties of the player with the correct values from the config
-
     // We create every entity by calling EntityManager.addEntity(tag)
     // This returns a std::shared_ptr<Entity>, so we use 'auto' to save typing
     auto entity = m_entities.addEntity("player");
 
-    // Give this entity a Transform so it spawns at (200,200) with velocity (1,1) and angle 0
-    entity->cTransform = std::make_shared<CTransform>(Vec2(200.0f, 200.0f), Vec2(1.0f, 1.0f), 0.0f);
+    // Entity's transform component using configuration variables
+    Vec2 pos = {m_window.getSize().x / 2.0f, m_window.getSize().y / 2.0f};
+    Vec2 vel = {0.0f, 0.0f};
+    entity->cTransform = std::make_shared<CTransform>(pos, vel, 0.0f);
+    
 
-    // The entity's shape will have radius 32, 8 sides, dark grey fill, and red outline of thickness 4
-    entity->cShape = std::make_shared<CShape>(32.0f, 8, sf::Color(10, 10, 10), sf::Color(255, 0, 0), 4.0f);
+    // Entity's shape component using configuration variables
+    entity->cShape = std::make_shared<CShape>(m_playerConfig.SR, m_playerConfig.V, 
+                                              sf::Color(m_playerConfig.FR, m_playerConfig.FG, m_playerConfig.FB),
+                                              sf::Color(m_playerConfig.OR, m_playerConfig.OG, m_playerConfig.OB),
+                                              m_playerConfig.OT);
 
     // Add an input component to the player so that we can use inputs
     entity->cInput = std::make_shared<CInput>();

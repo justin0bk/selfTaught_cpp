@@ -23,6 +23,8 @@ public:
     CShape(float radius, int points, const sf::Color& fill,
            const sf::Color& outline, float thickness)
     {
+        circle.setRadius(radius);
+        circle.setPointCount(points);
         circle.setFillColor(fill);
         circle.setOutlineColor(outline);
         circle.setOutlineThickness(thickness);
