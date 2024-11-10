@@ -4,6 +4,7 @@
 #include <iostream>
 #include <fstream>
 #include <string>
+#include <cmath>
 
 Game::Game(const std::string & config)
 {
@@ -123,7 +124,7 @@ void Game::run()
         // m_entities.update();
 
         // sEnemySpawner();
-        // sMovement();
+        sMovement();
         // sCollision();
         sUserInput();
         sRender();
@@ -147,7 +148,7 @@ void Game::spawnPlayer()
 
     // Entity's transform component using configuration variables
     Vec2 pos = {m_window.getSize().x / 2.0f, m_window.getSize().y / 2.0f};
-    Vec2 vel = {0.0f, 0.0f};
+    Vec2 vel = {m_playerConfig.S, m_playerConfig.S};
     entity->cTransform = std::make_shared<CTransform>(pos, vel, 0.0f);
     
 
@@ -207,8 +208,24 @@ void Game::sMovement()
     //       you should read the m_player->cInput component to determine if the player is moving
 
     // Sample movement speed update
-    m_player->cTransform->pos.x += m_player->cTransform->velocity.x;
-    m_player->cTransform->pos.y += m_player->cTransform->velocity.y;
+    float dx = 0.0f;
+    float dy = 0.0f;
+
+    if (m_player->cInput->up) dy -= 1.0f;
+    if (m_player->cInput->down) dy += 1.0f;
+    if (m_player->cInput->left) dx -= 1.0f;
+    if (m_player->cInput->right) dx += 1.0f;
+
+    // Normalize the direction vector
+    float length = std::sqrt(dx * dx + dy * dy);
+    if (length != 0.0f) {
+        dx = (dx / length) * m_playerConfig.S;
+        dy = (dy / length) * m_playerConfig.S;
+    }
+
+    // Update the player's position
+    m_player->cTransform->pos.x += dx;
+    m_player->cTransform->pos.y += dy;
 }
 
 void Game::sLifespan()
@@ -279,8 +296,16 @@ void Game::sUserInput()
             switch (event.key.code)
             {
             case sf::Keyboard::W:
-                std::cout << "W Key Pressed\n";
-                // TODO: set player's input component "up" to true
+                m_player->cInput->up = true;
+                break;
+            case sf::Keyboard::S:
+                m_player->cInput->down = true;
+                break;
+            case sf::Keyboard::A:
+                m_player->cInput->left = true;
+                break;
+            case sf::Keyboard::D:
+                m_player->cInput->right = true;
                 break;
             default:
                 break;
@@ -292,8 +317,16 @@ void Game::sUserInput()
             switch (event.key.code)
             {
             case sf::Keyboard::W:
-                std::cout << "W Key Released\n";
-                // TODO: set player's input component "up" to false
+                m_player->cInput->up = false;
+                break;
+            case sf::Keyboard::S:
+                m_player->cInput->down = false;
+                break;
+            case sf::Keyboard::A:
+                m_player->cInput->left = false;
+                break;
+            case sf::Keyboard::D:
+                m_player->cInput->right = false;
                 break;
             default:
                 break;
@@ -303,13 +336,13 @@ void Game::sUserInput()
         {
             if (event.mouseButton.button == sf::Mouse::Left)
             {
-                std::cout << "Left Mouse Button Clicked at (" << event.mouseButton.x << ", " << event.mouseButton.y << ")\n";
+                std::cout << "Left Mouse Button Clicked at (" << event.mouseButton.x << ", " << event.mouseButton.y << ")" << std::endl;
                 // call spawnBullet here
             }
 
             if (event.mouseButton.button == sf::Mouse::Right)
             {
-                std::cout << "Right Mouse Button Clicked at (" << event.mouseButton.x << ", " << event.mouseButton.y << ")\n";
+                std::cout << "Right Mouse Button Clicked at (" << event.mouseButton.x << ", " << event.mouseButton.y << ")"  << std::endl;
                 // call spawnSpecialWeapon here
             }
         }
