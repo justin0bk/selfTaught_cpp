@@ -16,7 +16,7 @@ class Entity
 
 public:
 
-    // component pointers
+    // Component pointers
     std::shared_ptr<CTransform> cTransform;
     std::shared_ptr<CShape> cShape;
     std::shared_ptr<CCollision> cCollision;
@@ -24,7 +24,7 @@ public:
     std::shared_ptr<CScore> cScore;
     std::shared_ptr<CLifespan> cLifespan;
 
-    // private member access functions
+    // Private member access functions
     bool isActive() const;
     const std::string& tag() const;
     const size_t id() const;
