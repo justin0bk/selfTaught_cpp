@@ -77,7 +77,8 @@ void Game::readConfig(std::string & head, std::ifstream & fin)
     } else if (head == "Bullet")
     {
         fin >> m_bulletConfig.SR 
-            >> m_bulletConfig.CR 
+            >> m_bulletConfig.CR
+            >> m_bulletConfig.S
             >> m_bulletConfig.FR 
             >> m_bulletConfig.FG 
             >> m_bulletConfig.FB 
@@ -86,8 +87,7 @@ void Game::readConfig(std::string & head, std::ifstream & fin)
             >> m_bulletConfig.OB 
             >> m_bulletConfig.OT 
             >> m_bulletConfig.V 
-            >> m_bulletConfig.L 
-            >> m_bulletConfig.S;
+            >> m_bulletConfig.L;
     }
 }
 
@@ -190,6 +190,22 @@ void Game::spawnSmallEnemies(std::shared_ptr<Entity> e)
 // spawns a bullet from a given entity to a target location
 void Game::spawnBullet(std::shared_ptr<Entity> entity, const Vec2 & target)
 {
+    Vec2 start_pos = entity->cTransform->pos;
+    
+    auto bullet_entity = m_entities.addEntity("bullet");
+
+    Vec2 vel = (start_pos - target);
+    vel.normalize();
+    vel *= m_bulletConfig.S;
+
+    bullet_entity->cTransform = std::make_shared<CTransform>(start_pos, vel, 0.0f);
+    
+    // Entity's shape component using configuration variables
+    bullet_entity->cShape = std::make_shared<CShape>(m_bulletConfig.SR, m_bulletConfig.V, 
+                                              sf::Color(m_bulletConfig.FR, m_bulletConfig.FG, m_bulletConfig.FB),
+                                              sf::Color(m_bulletConfig.OR, m_bulletConfig.OG, m_bulletConfig.OB),
+                                              m_bulletConfig.OT);
+
     // TODO: implement the spawning of a bullet which travels toward target
     // - bullet speed is given as a scalar speed
     // - you must set the velocity by using formula in notes
@@ -204,8 +220,7 @@ void Game::spawnSpecialWeapon(std::shared_ptr<Entity> entity)
 // System functions
 void Game::sMovement()
 {
-    // TODO: implement all entity movement in this function
-    //       you should read the m_player->cInput component to determine if the player is moving
+    // Player movement control system
 
     // Sample movement speed update
     float dx = 0.0f;
@@ -226,6 +241,31 @@ void Game::sMovement()
     // Update the player's position
     m_player->cTransform->pos.x += dx;
     m_player->cTransform->pos.y += dy;
+
+    // Boundary conditions
+    float &x = m_player->cTransform->pos.x;
+    float &y = m_player->cTransform->pos.y;
+    if (x < m_playerConfig.SR) x = m_playerConfig.SR;
+    if (x > m_window.getSize().x - m_playerConfig.SR) x = m_window.getSize().x - m_playerConfig.SR;
+    if (y < m_playerConfig.SR) y = m_playerConfig.SR;
+    if (y > m_window.getSize().y - m_playerConfig.SR) y = m_window.getSize().y - m_playerConfig.SR;
+
+    // Bullet entity movements control
+    for (auto e : m_entities.getEntities("bullet"))
+    {
+        if (e->isActive())
+        {
+            e->cTransform->pos.x -= e->cTransform->velocity.x;
+            e->cTransform->pos.y -= e->cTransform->velocity.y;
+            if (e->cTransform->pos.x < 0 || 
+                e->cTransform->pos.x > m_window.getSize().x ||
+                e->cTransform->pos.y < 0 || 
+                e->cTransform->pos.y > m_window.getSize().x)
+                {
+                    e->destroy();
+                }
+        }
+    }
 }
 
 void Game::sLifespan()
@@ -267,20 +307,24 @@ void Game::sRender()
     // set the rotation of the shape based on the entity's transform->angle
     m_player->cTransform->angle += 1.0f;
     m_player->cShape->circle.setRotation(m_player->cTransform->angle);
-
-    // draw the entity's sf::CircleShape
+    
     m_window.draw(m_player->cShape->circle);
+
+    // set the bullet rendering component
+    for (auto e : m_entities.getEntities("bullet"))
+    {
+        if (e->isActive())
+        {
+            e->cShape->circle.setPosition(e->cTransform->pos.x, e->cTransform->pos.y);
+            m_window.draw(e->cShape->circle);
+        }
+    }
 
     m_window.display();
 }
 
 void Game::sUserInput()
 {
-    // TODO: handle user input here
-    //       note that you should only be setting the player's input component variables here
-    //       you should not implement the player's movement logic here
-    //       the movement system will read the variables you set in this function
-
     sf::Event event;
     while (m_window.pollEvent(event))
     {
@@ -336,14 +380,12 @@ void Game::sUserInput()
         {
             if (event.mouseButton.button == sf::Mouse::Left)
             {
-                std::cout << "Left Mouse Button Clicked at (" << event.mouseButton.x << ", " << event.mouseButton.y << ")" << std::endl;
-                // call spawnBullet here
+                spawnBullet(m_player, Vec2(event.mouseButton.x, event.mouseButton.y));
             }
 
             if (event.mouseButton.button == sf::Mouse::Right)
             {
-                std::cout << "Right Mouse Button Clicked at (" << event.mouseButton.x << ", " << event.mouseButton.y << ")"  << std::endl;
-                // call spawnSpecialWeapon here
+                // spawnSpecialWeapon();
             }
         }
     }
