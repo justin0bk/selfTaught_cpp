@@ -10,37 +10,60 @@ std::shared_ptr<Entity> EntityManager::createEntity(const size_t id, const std::
 
 void EntityManager::removeDeadEntities(EntityVec & vec)
 {
-    for (auto& e : vec)
-    {
-        if (!e->isActive())
-        {
-            e->destroy();
-        }
-    }
+    vec.erase(
+        // std::remove_if returns the index of the first element to be removed after sorting 
+        std::remove_if(vec.begin(), vec.end(),
+            //lambda function to sort and move the false-returning items to the back
+            [](const std::shared_ptr<Entity>& entity) {
+                return !entity->isActive();
+            }),
+        vec.end());
 }
 
 void EntityManager::update()
 {
-    for (auto& e : this->m_entitiesToAdd)
+    // Create entities from buffer
+    for (auto& e : m_entitiesToAdd)
     {
+        m_entities.push_back(e);
+        m_entityMap[e->m_tag].push_back(e);
+        m_totalEntities += 1;
+    }
+
+    if (!m_entitiesToAdd.empty())
+    {
+        m_entitiesToAdd.clear();
+    }
+
+    // Remove dead entities from the main entity list
+    removeDeadEntities(m_entities);
+
+    // Remove dead entities from the entity map
+    for (auto& [tag, entities] : m_entityMap)
+    {
+        removeDeadEntities(entities);
     }
 }
 
 std::shared_ptr<Entity> EntityManager::addEntity(const std::string & tag)
 {   
-    auto e = this->createEntity(this->m_totalEntities, tag);
-    this->m_entities.push_back(e);
-    this->m_entityMap[tag].push_back(e);
-    this->m_totalEntities += 1;
+    auto e = createEntity(m_totalEntities, tag);
+    if (tag == "player")
+    {
+        m_entities.push_back(e);
+    } else
+    {
+        m_entitiesToAdd.push_back(e);
+    }
     return e;
 }
 
 const EntityVec & EntityManager::getEntities()
 {
-    return this->m_entities;
+    return m_entities;
 }
 
 const EntityVec & EntityManager::getEntities(const std::string & tag)
 {   
-    return this->m_entityMap[tag];
+    return m_entityMap[tag];
 }

@@ -121,10 +121,11 @@ void Game::run()
     
     while (m_running)
     {
-        // m_entities.update();
+        m_entities.update();
 
         // sEnemySpawner();
         sMovement();
+        sLifespan();
         // sCollision();
         sUserInput();
         sRender();
@@ -206,9 +207,8 @@ void Game::spawnBullet(std::shared_ptr<Entity> entity, const Vec2 & target)
                                               sf::Color(m_bulletConfig.OR, m_bulletConfig.OG, m_bulletConfig.OB),
                                               m_bulletConfig.OT);
 
-    // TODO: implement the spawning of a bullet which travels toward target
-    // - bullet speed is given as a scalar speed
-    // - you must set the velocity by using formula in notes
+    // Entity's lifespan component
+        bullet_entity->cLifespan = std::make_shared<CLifespan>(m_bulletConfig.L);
 }
 
 void Game::spawnSpecialWeapon(std::shared_ptr<Entity> entity)
@@ -257,13 +257,21 @@ void Game::sMovement()
         {
             e->cTransform->pos.x -= e->cTransform->velocity.x;
             e->cTransform->pos.y -= e->cTransform->velocity.y;
-            if (e->cTransform->pos.x < 0 || 
-                e->cTransform->pos.x > m_window.getSize().x ||
-                e->cTransform->pos.y < 0 || 
-                e->cTransform->pos.y > m_window.getSize().x)
-                {
-                    e->destroy();
-                }
+            
+            // Destroy if object exits window
+            // if (e->cTransform->pos.x < 0 || 
+            //     e->cTransform->pos.x > m_window.getSize().x ||
+            //     e->cTransform->pos.y < 0 || 
+            //     e->cTransform->pos.y > m_window.getSize().x)
+            //     {
+            //         e->destroy();
+            //     }
+
+            // Destory if Lifespan has reach limit
+            if (e->cLifespan->remaining < 0)
+            {
+                e->destroy();
+            }
         }
     }
 }
@@ -279,6 +287,24 @@ void Game::sLifespan()
     //         scale its alpha channel properly
     //     if it has lifespan and its time is up
     //         destroy the entity
+    for (auto e : m_entities.getEntities())
+    {
+        if (e->cLifespan && e->cLifespan->remaining > 0)
+        {
+            auto lifespan = e->cLifespan;
+            
+            e->cLifespan->remaining -= 1;
+            
+            sf::Color fill_color = e->cShape->circle.getFillColor();
+            sf::Color outline_color = e->cShape->circle.getOutlineColor();
+            fill_color.a = 255 * lifespan->remaining / lifespan->total;
+            outline_color.a = 255 * lifespan->remaining / lifespan->total;
+
+            e->cShape->circle.setFillColor(fill_color);
+            e->cShape->circle.setOutlineColor(outline_color);
+        }
+    }
+
 }
 
 void Game::sCollision()
