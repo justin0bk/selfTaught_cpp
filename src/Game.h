@@ -30,6 +30,8 @@ class Game
     void init(const std::string & config);
     void setPaused(bool paused);
 
+    void checkAndReverseVelocity(std::shared_ptr<Entity> entity);
+    
     void sMovement();                // System: Entity position / movement update
     void sUserInput();               // System: User Input
     void sLifespan();                // System: Lifespan

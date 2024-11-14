@@ -173,6 +173,9 @@ void Game::spawnPlayer()
     // Add an input component to the player so that we can use inputs
     entity->cInput = std::make_shared<CInput>();
 
+    // Add the collision component
+    entity->cCollision = std::make_shared<CCollision>(m_playerConfig.CR);
+
     // Since we want this Entity to be our player, set our Game's player variable to be this Entity
     // This goes slightly against the EntityManager paradigm, but we use the player so much it's worth it
     m_player = entity;
@@ -192,7 +195,12 @@ void Game::spawnEnemy()
 
     float randpos_x = static_cast<float>(x_min + (rand() % (1 + x_max - x_min)));
     float randpos_y = static_cast<float>(y_min + (rand() % (1 + y_max - y_min)));
-    float randSpeed = m_enemyConfig.SMIN + static_cast<float>(rand()) / static_cast<float>(RAND_MAX) * (m_enemyConfig.SMAX - m_enemyConfig.SMIN);
+    float randSpeed_x = (rand() / (float)RAND_MAX) * (m_enemyConfig.SMAX - m_enemyConfig.SMIN) + m_enemyConfig.SMIN;
+    float randSpeed_y = (rand() / (float)RAND_MAX) * (m_enemyConfig.SMAX - m_enemyConfig.SMIN) + m_enemyConfig.SMIN;
+
+    // Randomly decide if the speed should be negative
+    if (rand() % 2 == 0) randSpeed_x = -randSpeed_x;
+    if (rand() % 2 == 0) randSpeed_y = -randSpeed_y;
 
     int rand_V = m_enemyConfig.VMIN  + (rand() % (1 + m_enemyConfig.VMAX - m_enemyConfig.VMIN));
     int randR = getRandomColorComponent();
@@ -202,14 +210,16 @@ void Game::spawnEnemy()
     auto entity = m_entities.addEntity("enemy");
 
     Vec2 pos = {randpos_x, randpos_y};
-    Vec2 vel = {randSpeed, randSpeed};
+    Vec2 vel = {randSpeed_x, randSpeed_y};
     entity->cTransform = std::make_shared<CTransform>(pos, vel, 0.0f);
 
     // Entity's shape component using configuration variables
     entity->cShape = std::make_shared<CShape>(m_enemyConfig.SR, rand_V, 
                                             sf::Color(randR, randG, randB),
-                                            sf::Color(m_playerConfig.OR, m_playerConfig.OG, m_playerConfig.OB),
+                                            sf::Color(m_enemyConfig.OR, m_enemyConfig.OG, m_enemyConfig.OB),
                                             m_playerConfig.OT);
+
+    entity->cCollision = std::make_shared<CCollision>(m_enemyConfig.CR);
 
     m_lastEnemySpawnTime = m_currentFrame;
 }
@@ -244,8 +254,11 @@ void Game::spawnBullet(std::shared_ptr<Entity> entity, const Vec2 & target)
                                               sf::Color(m_bulletConfig.OR, m_bulletConfig.OG, m_bulletConfig.OB),
                                               m_bulletConfig.OT);
 
+    // Entity's collision component
+    entity->cCollision = std::make_shared<CCollision>(m_bulletConfig.CR);
+
     // Entity's lifespan component
-        bullet_entity->cLifespan = std::make_shared<CLifespan>(m_bulletConfig.L);
+    bullet_entity->cLifespan = std::make_shared<CLifespan>(m_bulletConfig.L);
 }
 
 void Game::spawnSpecialWeapon(std::shared_ptr<Entity> entity)
@@ -253,6 +266,28 @@ void Game::spawnSpecialWeapon(std::shared_ptr<Entity> entity)
     // TODO: implement your own special weapon
 }
 
+void Game::checkAndReverseVelocity(std::shared_ptr<Entity> entity)
+{
+    // Get the window size
+    float windowWidth = m_window.getSize().x;
+    float windowHeight = m_window.getSize().y;
+
+    // Get the entity's position and velocity
+    float& posX = entity->cTransform->pos.x;
+    float& posY = entity->cTransform->pos.y;
+    float& velX = entity->cTransform->velocity.x;
+    float& velY = entity->cTransform->velocity.y;
+
+    // Check and reverse velocity if the entity reaches the window boundaries
+    if (posX <= 0 || posX >= windowWidth)
+    {
+        velX = -velX;
+    }
+    if (posY <= 0 || posY >= windowHeight)
+    {
+        velY = -velY;
+    }
+}
 
 // System functions
 void Game::sMovement()
@@ -309,6 +344,17 @@ void Game::sMovement()
             {
                 e->destroy();
             }
+        }
+    }
+
+    for (auto e : m_entities.getEntities("enemy"))
+    {
+        if (e->isActive())
+        {
+            e->cTransform->pos.x -= e->cTransform->velocity.x;
+            e->cTransform->pos.y -= e->cTransform->velocity.y;
+            checkAndReverseVelocity(e);
+            e->cTransform->angle += 3.0f;
         }
     }
 }
@@ -397,6 +443,7 @@ void Game::sRender()
         if (e->isActive())
         {
             e->cShape->circle.setPosition(e->cTransform->pos.x, e->cTransform->pos.y);
+            e->cShape->circle.setRotation(e->cTransform->angle);
             m_window.draw(e->cShape->circle);
         }
     }
