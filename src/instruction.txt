@@ -99,7 +99,7 @@ Player SR CR S FR FG FB OR OG OB OT V
 
 Enemy Specification:  
 
-Enemy SR CR SMIN SMAX OR OG OB OT VMIN VMAX L SP  
+Enemy SR CR SMIN SMAX OR OG OB OT VMIN VMAX L SI
 
 - Shape Radius         SR         int  
 - Collision Radius     CR         int  
@@ -108,7 +108,7 @@ Enemy SR CR SMIN SMAX OR OG OB OT VMIN VMAX L SP
 - Outline Thickness    OT         int  
 - Min/Max Vertices     VMIN,VMAX  int,int  
 - Small Lifespan       L          int  
-- Spawn Interval       SP         int  
+- Spawn Interval       SI         int  
 
 Bullet Specification:  
 

@@ -48,13 +48,7 @@ void EntityManager::update()
 std::shared_ptr<Entity> EntityManager::addEntity(const std::string & tag)
 {   
     auto e = createEntity(m_totalEntities, tag);
-    if (tag == "player")
-    {
-        m_entities.push_back(e);
-    } else
-    {
-        m_entitiesToAdd.push_back(e);
-    }
+    m_entitiesToAdd.push_back(e);
     return e;
 }
 

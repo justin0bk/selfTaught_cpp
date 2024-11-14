@@ -6,6 +6,14 @@
 #include <string>
 #include <cmath>
 
+#include <cstdlib>  // For rand() and RAND_MAX
+#include <ctime>    // For time()
+
+int getRandomColorComponent() 
+{
+    return rand() % 256;
+}
+
 Game::Game(const std::string & config)
 {
     init(config);
@@ -64,6 +72,8 @@ void Game::readConfig(std::string & head, std::ifstream & fin)
     {
         fin >> m_enemyConfig.SR 
             >> m_enemyConfig.CR 
+            >> m_enemyConfig.SMIN 
+            >> m_enemyConfig.SMAX
             >> m_enemyConfig.OR 
             >> m_enemyConfig.OG 
             >> m_enemyConfig.OB 
@@ -71,9 +81,7 @@ void Game::readConfig(std::string & head, std::ifstream & fin)
             >> m_enemyConfig.VMIN 
             >> m_enemyConfig.VMAX 
             >> m_enemyConfig.L 
-            >> m_enemyConfig.SI 
-            >> m_enemyConfig.SMIN 
-            >> m_enemyConfig.SMAX;
+            >> m_enemyConfig.SI;
     } else if (head == "Bullet")
     {
         fin >> m_bulletConfig.SR 
@@ -107,10 +115,13 @@ void Game::init(const std::string & path)
     while (fin >> tempHead)
     {
         readConfig(tempHead, fin);
-        std::cout << "initialized " << tempHead << std::endl;
     }
 
     spawnPlayer();
+    m_entities.update();
+
+    // Seed the random number generator at the start of the program
+    std::srand(static_cast<unsigned int>(std::time(0)));
 }
 
 void Game::run()
@@ -123,7 +134,7 @@ void Game::run()
     {
         m_entities.update();
 
-        // sEnemySpawner();
+        sEnemySpawner();
         sMovement();
         sLifespan();
         // sCollision();
@@ -173,7 +184,33 @@ void Game::spawnEnemy()
     // TODO: make sure the enemy is spawned properly with the m_enemyConfig variables
     //       the enemy must be spawned completely within the bounds of the window
 
-    // record when the most recent enemy was spawned
+    // Randomizing spawning position / speed / shape
+    int x_min = 0;
+    int x_max = m_window.getSize().x;
+    int y_min = 0;
+    int y_max = m_window.getSize().y;
+
+    float randpos_x = static_cast<float>(x_min + (rand() % (1 + x_max - x_min)));
+    float randpos_y = static_cast<float>(y_min + (rand() % (1 + y_max - y_min)));
+    float randSpeed = m_enemyConfig.SMIN + static_cast<float>(rand()) / static_cast<float>(RAND_MAX) * (m_enemyConfig.SMAX - m_enemyConfig.SMIN);
+
+    int rand_V = m_enemyConfig.VMIN  + (rand() % (1 + m_enemyConfig.VMAX - m_enemyConfig.VMIN));
+    int randR = getRandomColorComponent();
+    int randG = getRandomColorComponent();
+    int randB = getRandomColorComponent();
+
+    auto entity = m_entities.addEntity("enemy");
+
+    Vec2 pos = {randpos_x, randpos_y};
+    Vec2 vel = {randSpeed, randSpeed};
+    entity->cTransform = std::make_shared<CTransform>(pos, vel, 0.0f);
+
+    // Entity's shape component using configuration variables
+    entity->cShape = std::make_shared<CShape>(m_enemyConfig.SR, rand_V, 
+                                            sf::Color(randR, randG, randB),
+                                            sf::Color(m_playerConfig.OR, m_playerConfig.OG, m_playerConfig.OB),
+                                            m_playerConfig.OT);
+
     m_lastEnemySpawnTime = m_currentFrame;
 }
 
@@ -267,8 +304,8 @@ void Game::sMovement()
             //         e->destroy();
             //     }
 
-            // Destory if Lifespan has reach limit
-            if (e->cLifespan->remaining < 0)
+            // Destory if Lifespan has reached limit
+            if (e->cLifespan->remaining <= 0)
             {
                 e->destroy();
             }
@@ -278,8 +315,6 @@ void Game::sMovement()
 
 void Game::sLifespan()
 {
-    // TODO: implement all lifespan functionality
-    //
     // for all entities
     //     if entity has no lifespan component, skip it
     //     if entity has > 0 remaining lifespan, subtract 1
@@ -289,19 +324,25 @@ void Game::sLifespan()
     //         destroy the entity
     for (auto e : m_entities.getEntities())
     {
-        if (e->cLifespan && e->cLifespan->remaining > 0)
+        if (e->cLifespan)
         {
-            auto lifespan = e->cLifespan;
-            
-            e->cLifespan->remaining -= 1;
-            
-            sf::Color fill_color = e->cShape->circle.getFillColor();
-            sf::Color outline_color = e->cShape->circle.getOutlineColor();
-            fill_color.a = 255 * lifespan->remaining / lifespan->total;
-            outline_color.a = 255 * lifespan->remaining / lifespan->total;
+            if (e->cLifespan->remaining > 0)
+            {
+                auto lifespan = e->cLifespan;
+                
+                e->cLifespan->remaining -= 1;
+                
+                sf::Color fill_color = e->cShape->circle.getFillColor();
+                sf::Color outline_color = e->cShape->circle.getOutlineColor();
+                fill_color.a = 255 * lifespan->remaining / lifespan->total;
+                outline_color.a = 255 * lifespan->remaining / lifespan->total;
 
-            e->cShape->circle.setFillColor(fill_color);
-            e->cShape->circle.setOutlineColor(outline_color);
+                e->cShape->circle.setFillColor(fill_color);
+                e->cShape->circle.setOutlineColor(outline_color);
+            } else
+            {
+                e->destroy();
+            }
         }
     }
 
@@ -319,6 +360,11 @@ void Game::sEnemySpawner()
     //
     //       (use m_currentFrame - m_lastEnemySpawnTime) to determine
     //       how long it has been since the last enemy spawned
+
+    if (m_currentFrame - m_lastEnemySpawnTime > m_enemyConfig.SI)
+    { 
+        spawnEnemy();
+    }
 }
 
 void Game::sRender()
@@ -338,6 +384,15 @@ void Game::sRender()
 
     // set the bullet rendering component
     for (auto e : m_entities.getEntities("bullet"))
+    {
+        if (e->isActive())
+        {
+            e->cShape->circle.setPosition(e->cTransform->pos.x, e->cTransform->pos.y);
+            m_window.draw(e->cShape->circle);
+        }
+    }
+
+    for (auto e : m_entities.getEntities("enemy"))
     {
         if (e->isActive())
         {
