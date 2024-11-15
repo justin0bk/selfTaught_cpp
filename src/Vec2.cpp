@@ -82,6 +82,15 @@ double Vec2::length()
     return std::sqrtf(x*x + y*y);
 }
 
+Vec2 Vec2::spin(float angle)
+{
+    float rad = angle * (M_PI / 180.0f); // Convert angle to radians
+    float cosA = std::cos(rad);
+    float sinA = std::sin(rad);
+    return Vec2(x * cosA - y * sinA, x * sinA + y * cosA);
+}
+
+
 void Vec2::print()
 {
     std::cout << "(" << this->x << "," << this->y << ")" << std::endl;

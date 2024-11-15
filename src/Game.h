@@ -28,7 +28,7 @@ class Game
 
     void readConfig(std::string & head, std::ifstream & fin);
     void init(const std::string & config);
-    void setPaused(bool paused);
+    void setPaused();
 
     void checkAndReverseVelocity(std::shared_ptr<Entity> entity);
     

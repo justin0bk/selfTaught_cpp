@@ -25,6 +25,7 @@ public:
     float dist(const Vec2 & rhs) const;
     void normalize();
     double length();
+    Vec2 spin(float angle);
 
     void print();
 };
