@@ -429,8 +429,19 @@ void Game::sCollision()
     // TODO: implement all proper collisions between entities
     //       be sure to use the collision radius, NOT the shape radius
     for (auto& e : m_entities.getEntities("enemy"))
-    {
+    {   
         Vec2& enemy_pos = e->cTransform->pos;
+        Vec2& player_pos = m_player->cTransform->pos;
+        // Player collision event with an enemy resets the position to center
+        if (player_pos.dist(enemy_pos) <= e->cCollision->radius + m_player->cCollision->radius)
+        {
+            if (e->isActive())
+            {
+                m_player->cTransform->pos.x = m_window.getSize().x / 2.0f;
+                m_player->cTransform->pos.y = m_window.getSize().y / 2.0f; 
+            }
+        }
+        
         for (auto& b : m_entities.getEntities("bullet"))
         {
             Vec2& bullet_pos = b->cTransform->pos;
